@@ -38,18 +38,6 @@
 	<dependencies>
 		<!-- Compile-time dependencies (default scope) -->
 		<!-- Provided dependencies -->
-		<dependency><!-- included in Java SE 6; avoid adding as dependency -->
-			<groupId>javax.activation</groupId>
-			<artifactId>activation</artifactId>
-			<version>1.1.1</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency><!-- included in Java SE 6; avoid adding as dependency -->
-			<groupId>javax.annotation</groupId>
-			<artifactId>jsr250-api</artifactId>
-			<version>1.0</version>
-			<scope>provided</scope>
-		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
@@ -161,6 +149,32 @@
 					<warSourceExcludes>**/.gitignore,**/.empty,**/.emptydir</warSourceExcludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<artifactId>maven-enforcer-plugin</artifactId><!-- use -Denforcer.skip=true to bypass -->
+				<executions>
+					<execution>
+						<id>enforce-versions</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireMavenVersion>
+									<version>[3.0.4,)</version>
+								</requireMavenVersion>
+								<requireJavaVersion>
+									<version>[1.7.0,)</version>
+								</requireJavaVersion>
+								<requireReleaseDeps>
+									<onlyWhenRelease>true</onlyWhenRelease>
+									<failWhenParentIsSnapshot>false</failWhenParentIsSnapshot>
+									<message>No Snapshots Allowed!</message>
+								</requireReleaseDeps>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -207,5 +221,27 @@
 	<distributionManagement></distributionManagement>
 
 	<profiles>
+		<profile>
+			<id>Java6</id>
+			<activation>
+				<jdk>[1.6,)</jdk>
+			</activation>
+			<modules>
+			</modules>
+			<dependencies><!-- Those are included in Java SE 6; avoid adding them as dependencies -->
+				<dependency>
+					<groupId>javax.activation</groupId>
+					<artifactId>activation</artifactId>
+					<version>1.1.1</version>
+					<scope>provided</scope>
+				</dependency>
+				<dependency>
+					<groupId>javax.annotation</groupId>
+					<artifactId>jsr250-api</artifactId>
+					<version>1.0</version>
+					<scope>provided</scope>
+				</dependency>
+			</dependencies>
+		</profile>
 	</profiles>
 </project>
