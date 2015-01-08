@@ -18,10 +18,11 @@ import javax.servlet.http.HttpServletResponse;
  */
 @WebServlet(description="SpeedTest Servlet",
 	name="SpeedTestServlet",
-	displayName="MessAdmin Servlet",
+	displayName="SpeedTest Servlet",
 	loadOnStartup=0,
 	urlPatterns={"/*"},
 	initParams={/*@WebInitParam(name="", value="")*/})
+@SuppressWarnings("serial")
 public class SpeedTestServlet extends HttpServlet {
 
 	/**
@@ -54,12 +55,37 @@ public class SpeedTestServlet extends HttpServlet {
 	/** {@inheritDoc} */
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		String servletPath = request.getPathInfo();
-		if ("".equals(servletPath)) {
-			// TODO display help
+		// ensure we get an un-encrypted channel, so that CPU is not a limiting factor
+		if (request.isSecure()) {
+			response.sendRedirect(response.encodeRedirectURL(getUnsecureRequestURLWithQueryString(request)));
 			return;
 		}
-	
+		String servletPath = request.getPathInfo();
+		if (servletPath == null || servletPath.isEmpty() || "/".equals(servletPath)) {
+			// display help
+			response.setContentType("text/plain;charset=UTF-8");//$NON-NLS-1$
+			try (PrintWriter output = response.getWriter()) {
+				output.println("Usage");
+				output.println("=====");
+				output.println();
+				output.print("Test download:	curl -o /dev/null ");output.print(request.getRequestURL());output.println("<size>[kKmMgG]");
+				output.println("	k: kilo");
+				output.println("	K: kili");
+				output.println("	m: mega");
+				output.println("	M: megi");
+				output.println("	g: giga");
+				output.println("	G: gigi");
+				output.println();
+				output.print("Test upload:	curl -X POST -T <big_file> ");output.println(request.getRequestURL());
+				output.println("the returned number is your upload speed in bytes / second.");
+				output.println();
+				output.println();
+				output.println();
+				output.println("Sources: https://github.com/javabean/SpeedTest");
+			}
+			return;
+		}
+
 		setNoCache(response);
 		servletPath = servletPath.substring(1); // remove leading "/"
 		char lastChar = servletPath.substring(servletPath.length()-1).charAt(0);
@@ -111,11 +137,16 @@ public class SpeedTestServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		setNoCache(response);
+		// ensure we get an un-encrypted channel, so that CPU is not a limiting factor
+		if (request.isSecure()) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Can not test network speed over encrypted channel (CPU limitation)");
+			return;
+		}
 		response.setContentType("text/plain;charset=UTF-8");//$NON-NLS-1$
 		try (ServletInputStream input = request.getInputStream(); PrintWriter output = response.getWriter()) {
 			int bytesRead;
 			long totalBytes = 0;
-			byte[] buffer = new byte[32768];
+			byte[] buffer = new byte[65536];
 			long startTimeNano = System.nanoTime();
 			while ((bytesRead = input.read(buffer)) != -1) {
 				totalBytes += bytesRead;
@@ -143,5 +174,59 @@ public class SpeedTestServlet extends HttpServlet {
 		response.setDateHeader(HEADER_EXPIRES, 0); // 0 means now
 		// should we decide to enable caching, here are the current vary:
 		response.addHeader("Vary", "Accept-Language,Accept-Encoding,Accept-Charset");
+	}
+
+
+	/**
+	 * Reconstructs the URL the client used to make the request,
+	 * using information in the <code>HttpServletRequest</code> object.
+	 * The returned URL contains a protocol, server name, port
+	 * number, and server path, and include query
+	 * string parameters.
+	 *
+	 * <p>This method is useful for creating redirect messages
+	 * and for reporting errors.
+	 *
+	 * @param request	a <code>HttpServletRequest</code> object
+	 *			containing the client's request
+	 *
+	 * @return		a <code>String</code> object containing
+	 *			the reconstructed URL
+	 */
+	private static String getUnsecureRequestURLWithQueryString(HttpServletRequest request) {
+		/*
+		StringBuffer requestURL = request.getRequestURL();
+		String queryString = request.getQueryString();
+		if (queryString != null && ! queryString.isEmpty()) {
+			requestURL.append('?').append(queryString);
+		}
+		return requestURL.toString();
+		*/
+		StringBuilder url = new StringBuilder(32);
+		//String scheme = request.getScheme();
+		int port = request.getServerPort();
+		if (port < 0) {
+			port = 80; // Work around java.net.URL bug
+		}
+		//String 	pathInfo = req.getPathInfo();
+		String queryString = request.getQueryString();
+
+		url.append("http");	// http, https
+		url.append("://"); //$NON-NLS-1$
+		url.append(request.getServerName());
+		//if ((scheme.equals ("http") && port != 80)
+		//		|| (scheme.equals ("https") && port != 443)) {
+		//	url.append (':');
+		//	url.append (port);
+		//}
+		//url.append(req.getContextPath());
+		//url.append (req.getServletPath());
+		//if (pathInfo != null)
+		//	url.append (pathInfo);
+		url.append(request.getRequestURI());
+		if (queryString != null) {
+			url.append('?').append(queryString);
+		}
+		return url.toString();
 	}
 }
