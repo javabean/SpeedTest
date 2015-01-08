@@ -121,6 +121,9 @@ public class SpeedTestServlet extends HttpServlet {
 		}
 
 		response.setContentType("application/octet-stream");//$NON-NLS-1$
+		if (requestedSize < Integer.MAX_VALUE) {
+			response.setContentLength((int)requestedSize);
+		}
 		byte[] buffer = new byte[65536];
 		new Random().nextBytes(buffer); // fill with random to prevent upstream compression
 		long totalWriten = 0;
